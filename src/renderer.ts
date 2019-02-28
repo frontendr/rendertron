@@ -1,6 +1,16 @@
 import * as puppeteer from 'puppeteer';
 import * as url from 'url';
 
+import {Config} from './rendertron';
+
+/**
+ * Declare a modified `window` object which is available in the functions which
+ * are run on the created document.
+ */
+declare global {
+    interface Window { __rendertronConfig: Config; }
+}
+
 type SerializedResponse = {
   status: number; content: string;
 };
@@ -19,8 +29,11 @@ const MOBILE_USERAGENT =
 export class Renderer {
   private browser: puppeteer.Browser;
 
-  constructor(browser: puppeteer.Browser) {
+  readonly config: Config;
+
+  constructor(browser: puppeteer.Browser, config: Config) {
     this.browser = browser;
+    this.config = config;
   }
 
   async serialize(requestUrl: string, isMobile: boolean):
@@ -30,10 +43,15 @@ export class Renderer {
      * import tags to prevent further loading of resources.
      */
     function stripPage() {
-      // Strip only script tags that contain JavaScript (either no type attribute or one that contains "javascript")
-      const elements = document.querySelectorAll('script:not([type]), script[type*="javascript"], link[rel=import]');
-      for (const e of Array.from(elements)) {
-        e.remove();
+      const selectorsToStrip = 'stripSelectors' in window.__rendertronConfig
+          ? window.__rendertronConfig.stripSelectors
+          : 'script:not([type]), script[type*="javascript"], link[rel=import]';
+
+      if (selectorsToStrip) {
+        const elements = document.querySelectorAll(selectorsToStrip);
+        for (const e of Array.from(elements)) {
+            e.remove();
+        }
       }
     }
 
@@ -68,7 +86,7 @@ export class Renderer {
     if (isMobile) {
       page.setUserAgent(MOBILE_USERAGENT);
     }
-
+    page.evaluateOnNewDocument(`__rendertronConfig = ${JSON.stringify(this.config)}`);
     page.evaluateOnNewDocument('customElements.forcePolyfill = true');
     page.evaluateOnNewDocument('ShadyDOM = {force: true}');
     page.evaluateOnNewDocument('ShadyCSS = {shimcssproperties: true}');
