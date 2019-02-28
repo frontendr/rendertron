@@ -86,7 +86,7 @@ export class Renderer {
     if (isMobile) {
       page.setUserAgent(MOBILE_USERAGENT);
     }
-    page.evaluateOnNewDocument(`__rendertronConfig = ${JSON.stringify(this.config)}`);
+    page.evaluateOnNewDocument(`window.__rendertronConfig = ${JSON.stringify(this.config)}`);
     page.evaluateOnNewDocument('customElements.forcePolyfill = true');
     page.evaluateOnNewDocument('ShadyDOM = {force: true}');
     page.evaluateOnNewDocument('ShadyCSS = {shimcssproperties: true}');
